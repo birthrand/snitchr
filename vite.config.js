@@ -12,23 +12,57 @@ export default defineConfig({
       manifest: {
         name: 'Snitchr - Anonymous Confessions',
         short_name: 'Snitchr',
-        description: 'Share your anonymous confessions',
-        theme_color: '#ffffff',
+        description: 'Share anonymous confessions with the world',
+        theme_color: '#6366f1',
         background_color: '#ffffff',
         display: 'standalone',
-        icons: []
+        orientation: 'portrait',
+        scope: '/',
+        start_url: '/',
+        icons: [],
+        shortcuts: [
+          {
+            name: 'Add Confession',
+            short_name: 'Add',
+            description: 'Add a new anonymous confession',
+            url: '/?action=add'
+          },
+          {
+            name: 'View Confessions',
+            short_name: 'View',
+            description: 'View all confessions',
+            url: '/'
+          }
+        ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/nominatim\.openstreetmap\.org\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'geocoding-cache',
+              expiration: {
+                maxEntries: 1000,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              }
+            }
+          }
+        ]
       }
     })
   ],
-
   server: {
-    host: true, // listen on all addresses
+    port: 5173,
+    host: true,
     allowedHosts: [
       'b82b3e400bda.ngrok-free.app',
-      '172.16.1.112', // your phone's IP
+      '172.16.1.112' // your phone's IP
     ]
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true
   }
 })
