@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import EmojiPicker from './EmojiPicker'
+import { getCachedLocation } from '../utils/geocoding'
 
 const AddConfession = ({ onAdd, onCancel }) => {
   const [nickname, setNickname] = useState('')
@@ -7,6 +8,7 @@ const AddConfession = ({ onAdd, onCancel }) => {
   const [selectedMood, setSelectedMood] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [location, setLocation] = useState(null)
+  const [locationName, setLocationName] = useState(null)
   const [locationError, setLocationError] = useState('')
   const [errors, setErrors] = useState({})
 
@@ -14,11 +16,22 @@ const AddConfession = ({ onAdd, onCancel }) => {
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
+        async (position) => {
+          const coords = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
-          })
+          }
+          setLocation(coords)
+          
+          // Get location name
+          try {
+            const locationData = await getCachedLocation(coords.latitude, coords.longitude)
+            if (locationData) {
+              setLocationName(locationData)
+            }
+          } catch (error) {
+            console.error('Error getting location name:', error)
+          }
         },
         (error) => {
           console.error('Geolocation error:', error)
@@ -56,7 +69,7 @@ const AddConfession = ({ onAdd, onCancel }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
@@ -177,11 +190,20 @@ const AddConfession = ({ onAdd, onCancel }) => {
             }`}></div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {location ? 'Location detected' : locationError ? 'Location unavailable' : 'Detecting location...'}
+                {location 
+                  ? locationName 
+                    ? `📍 ${locationName.name}`
+                    : 'Location detected'
+                  : locationError 
+                    ? 'Location unavailable' 
+                    : 'Detecting location...'
+                }
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                 {location 
-                  ? 'Your confession will be tagged with your approximate location'
+                  ? locationName
+                    ? `Your confession will be tagged with your location in ${locationName.name}`
+                    : 'Your confession will be tagged with your approximate location'
                   : locationError || 'This helps others know where confessions are shared from'
                 }
               </p>
@@ -226,23 +248,23 @@ const AddConfession = ({ onAdd, onCancel }) => {
             )}
           </button>
         </div>
-      </form>
 
-      {/* Privacy Notice */}
-      <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-        <div className="flex items-start space-x-3">
-          <svg className="w-5 h-5 text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">Privacy & Anonymity</h4>
-            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-              Your confessions are stored locally on your device. We don't collect or store any personal information. 
-              Your nickname and location data remain private and are only visible to you.
-            </p>
+        {/* Privacy Notice */}
+        <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+          <div className="flex items-start space-x-3">
+            <svg className="w-5 h-5 text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">Privacy & Anonymity</h4>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                Your confessions are stored locally on your device. We don't collect or store any personal information. 
+                Your nickname and location data remain private and are only visible to you.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   )
 }
