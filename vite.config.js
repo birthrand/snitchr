@@ -12,10 +12,13 @@ export default defineConfig({
       manifest: {
         name: 'Snitchr - Anonymous Confessions',
         short_name: 'Snitchr',
-        description: 'Share your anonymous confessions',
-        theme_color: '#ffffff',
+        description: 'Share anonymous confessions with the world',
+        theme_color: '#6366f1',
         background_color: '#ffffff',
         display: 'standalone',
+        orientation: 'portrait',
+        scope: '/',
+        start_url: '/',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -26,12 +29,55 @@ export default defineConfig({
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png'
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ],
+        shortcuts: [
+          {
+            name: 'Add Confession',
+            short_name: 'Add',
+            description: 'Add a new anonymous confession',
+            url: '/?action=add',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'View Confessions',
+            short_name: 'View',
+            description: 'View all confessions',
+            url: '/',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
           }
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/nominatim\.openstreetmap\.org\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'geocoding-cache',
+              expiration: {
+                maxEntries: 1000,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              }
+            }
+          }
+        ]
       }
     })
   ],
+  server: {
+    port: 5173,
+    host: true
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true
+  }
 })
