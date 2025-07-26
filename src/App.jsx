@@ -3,33 +3,29 @@ import Home from './components/Home'
 import AddConfession from './components/AddConfession'
 import DarkModeToggle from './components/DarkModeToggle'
 import PullToRefresh from './components/PullToRefresh'
+import SkeletonLoader from './components/SkeletonLoader'
+import { useConfessions } from './useConfessions'
 import { createConfetti, createSuccessAnimation } from './utils/confetti'
 import { hapticFeedback } from './utils/haptics'
+import { analyticsAPI } from './supabase'
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState('home')
-  const [confessions, setConfessions] = useState([])
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Load confessions from localStorage on app start
-  useEffect(() => {
-    const savedConfessions = localStorage.getItem('snitchr-confessions')
-    if (savedConfessions) {
-      try {
-        setConfessions(JSON.parse(savedConfessions))
-      } catch (error) {
-        console.error('Error loading confessions:', error)
-        setConfessions([])
-      }
-    }
-    setIsLoading(false)
-  }, [])
-
-  // Save confessions to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('snitchr-confessions', JSON.stringify(confessions))
-  }, [confessions])
+  // Use the custom hook for confessions management
+  const {
+    confessions,
+    loading: confessionsLoading,
+    error: confessionsError,
+    hasMore,
+    loadMore,
+    refresh,
+    addConfession,
+    updateReactions,
+    deleteConfession
+  } = useConfessions()
 
   // Check for dark mode preference
   useEffect(() => {
@@ -40,55 +36,71 @@ function App() {
       setIsDarkMode(true)
       document.documentElement.classList.add('dark')
     }
+    
+    setIsLoading(false)
+    
+    // Track app launch
+    analyticsAPI.trackAppUsage('app_launched')
   }, [])
 
-  const addConfession = (newConfession) => {
-    hapticFeedback.success()
-    setConfessions(prev => [newConfession, ...prev])
-    setCurrentScreen('home')
-    
-    // Trigger confetti animation
-    setTimeout(() => {
-      createConfetti(0.5, 0.3)
-    }, 100)
+  const handleAddConfession = async (newConfession) => {
+    try {
+      hapticFeedback.success()
+      await addConfession(newConfession)
+      setCurrentScreen('home')
+      
+      // Trigger confetti animation
+      setTimeout(() => {
+        createConfetti(0.5, 0.3)
+      }, 100)
+      
+      // Track success
+      analyticsAPI.trackAppUsage('confession_added')
+    } catch (error) {
+      console.error('Error adding confession:', error)
+      hapticFeedback.error()
+      throw error
+    }
   }
 
-  const deleteConfession = (id) => {
-    hapticFeedback.delete()
-    setConfessions(prev => prev.filter(confession => confession.id !== id))
+  const handleDeleteConfession = async (id) => {
+    try {
+      hapticFeedback.delete()
+      await deleteConfession(id)
+      analyticsAPI.trackAppUsage('confession_deleted')
+    } catch (error) {
+      console.error('Error deleting confession:', error)
+      hapticFeedback.error()
+      throw error
+    }
   }
 
-  const updateReactions = (confessionId, reactionType) => {
-    hapticFeedback.reaction()
-    setConfessions(prev => prev.map(confession => {
-      if (confession.id === confessionId) {
-        const reactions = confession.reactions || {}
-        const currentCount = reactions[reactionType] || 0
-        const hasReacted = reactions[`${reactionType}_reacted`] || false
-        
-        return {
-          ...confession,
-          reactions: {
-            ...reactions,
-            [reactionType]: hasReacted ? currentCount - 1 : currentCount + 1,
-            [`${reactionType}_reacted`]: !hasReacted
-          }
-        }
-      }
-      return confession
-    }))
+  const handleUpdateReactions = async (confessionId, reactionType) => {
+    try {
+      hapticFeedback.reaction()
+      await updateReactions(confessionId, reactionType)
+    } catch (error) {
+      console.error('Error updating reactions:', error)
+      hapticFeedback.error()
+    }
   }
 
   const handleRefresh = async () => {
-    hapticFeedback.pull()
-    // Simulate refresh delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    hapticFeedback.success()
+    try {
+      hapticFeedback.pull()
+      await refresh()
+      hapticFeedback.success()
+      analyticsAPI.trackAppUsage('confessions_refreshed')
+    } catch (error) {
+      console.error('Error refreshing confessions:', error)
+      hapticFeedback.error()
+    }
   }
 
   const handleScreenChange = (screen) => {
     hapticFeedback.navigate()
     setCurrentScreen(screen)
+    analyticsAPI.trackAppUsage(`screen_changed_to_${screen}`)
   }
 
   const handleThemeToggle = () => {
@@ -103,6 +115,8 @@ function App() {
       document.documentElement.classList.remove('dark')
       localStorage.setItem('snitchr-theme', 'light')
     }
+    
+    analyticsAPI.trackAppUsage(`theme_changed_to_${newTheme ? 'dark' : 'light'}`)
   }
 
   if (isLoading) {
@@ -180,20 +194,47 @@ function App() {
         </div>
       </header>
 
+      {/* Error Banner */}
+      {confessionsError && (
+        <div className="bg-red-50 dark:bg-red-900 border-b border-red-200 dark:border-red-800 px-4 py-3">
+          <div className="max-w-md mx-auto flex items-center space-x-3">
+            <svg className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <p className="text-sm text-red-700 dark:text-red-300">
+              {confessionsError}
+            </p>
+            <button
+              onClick={refresh}
+              className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-md mx-auto px-4 py-6 pb-24 safe-area-bottom">
         <PullToRefresh onRefresh={handleRefresh}>
           <div className="screen-transition">
             {currentScreen === 'home' ? (
-              <Home 
-                confessions={confessions} 
-                onDelete={deleteConfession}
-                onAddNew={() => handleScreenChange('add')}
-                onReaction={updateReactions}
-              />
+              confessionsLoading && confessions.length === 0 ? (
+                <SkeletonLoader type="confession" count={3} />
+              ) : (
+                <Home 
+                  confessions={confessions} 
+                  onDelete={handleDeleteConfession}
+                  onAddNew={() => handleScreenChange('add')}
+                  onReaction={handleUpdateReactions}
+                  onLoadMore={loadMore}
+                  hasMore={hasMore}
+                  loading={confessionsLoading}
+                />
+              )
             ) : (
               <AddConfession
-                onAdd={addConfession}
+                onAdd={handleAddConfession}
                 onCancel={() => handleScreenChange('home')}
               />
             )}
