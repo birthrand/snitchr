@@ -6,6 +6,12 @@
  */
 export const getCityFromCoordinates = async (latitude, longitude) => {
   try {
+    // Check for valid coordinates
+    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+      console.warn('Invalid coordinates provided:', { latitude, longitude });
+      return 'Location unavailable';
+    }
+
     // Use OpenStreetMap Nominatim API for reverse geocoding
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`,
@@ -34,7 +40,7 @@ export const getCityFromCoordinates = async (latitude, longitude) => {
     return city;
   } catch (error) {
     console.error('Error getting city name:', error);
-    return 'Unknown location';
+    return 'Location unavailable';
   }
 };
 
@@ -48,15 +54,27 @@ const geocodingCache = new Map();
  * @returns {Promise<{name: string, fullAddress: string, country: string, state: string, city: string}>} Location data
  */
 export const getCachedLocation = async (latitude, longitude) => {
-  // Round coordinates to 4 decimal places for cache key
-  const cacheKey = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-
-  // Check cache first
-  if (geocodingCache.has(cacheKey)) {
-    return geocodingCache.get(cacheKey);
-  }
-
   try {
+    // Check for valid coordinates
+    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+      console.warn('Invalid coordinates provided:', { latitude, longitude });
+      return {
+        name: 'Location unavailable',
+        fullAddress: '',
+        country: '',
+        state: '',
+        city: ''
+      };
+    }
+
+    // Round coordinates to 4 decimal places for cache key
+    const cacheKey = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+
+    // Check cache first
+    if (geocodingCache.has(cacheKey)) {
+      return geocodingCache.get(cacheKey);
+    }
+
     // Use OpenStreetMap Nominatim API for reverse geocoding
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
@@ -96,7 +114,7 @@ export const getCachedLocation = async (latitude, longitude) => {
   } catch (error) {
     console.error('Error getting location:', error);
     return {
-      name: 'Unknown location',
+      name: 'Location unavailable',
       fullAddress: '',
       country: '',
       state: '',
@@ -112,7 +130,11 @@ export const getCachedLocation = async (latitude, longitude) => {
 export const getCurrentCoordinates = () => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by your browser'));
+      console.warn('Geolocation is not supported by your browser');
+      resolve({
+        latitude: undefined,
+        longitude: undefined
+      });
       return;
     }
 
@@ -124,8 +146,11 @@ export const getCurrentCoordinates = () => {
         });
       },
       (error) => {
-        console.error('Error getting location:', error);
-        reject(error);
+        console.error('Geolocation error:', error);
+        resolve({
+          latitude: undefined,
+          longitude: undefined
+        });
       },
       {
         enableHighAccuracy: false, // Use lower accuracy for privacy

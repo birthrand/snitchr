@@ -1,263 +1,117 @@
-import { useState, useEffect } from 'react'
-import Home from './components/Home'
-import AddConfession from './components/AddConfession'
-import DarkModeToggle from './components/DarkModeToggle'
-import PullToRefresh from './components/PullToRefresh'
-import SkeletonLoader from './components/SkeletonLoader'
-import { useConfessions } from './useConfessions'
-import { createConfetti, createSuccessAnimation } from './utils/confetti'
+import { useState } from 'react'
 import { hapticFeedback } from './utils/haptics'
-import { analyticsAPI } from './supabase'
+import Home from './components/Home'
+import Trending from './components/Trending'
+import Notifications from './components/Notifications'
+import Profile from './components/Profile'
+import AddConfession from './components/AddConfession'
 
-function App() {
-  const [currentScreen, setCurrentScreen] = useState('home')
-  const [isDarkMode, setIsDarkMode] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+const App = () => {
+  const [activeTab, setActiveTab] = useState('home')
+  const [showAddConfession, setShowAddConfession] = useState(false)
 
-  // Use the custom hook for confessions management
-  const {
-    confessions,
-    loading: confessionsLoading,
-    error: confessionsError,
-    hasMore,
-    loadMore,
-    refresh,
-    addConfession,
-    updateReactions,
-    deleteConfession
-  } = useConfessions()
-
-  // Check for dark mode preference
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('snitchr-theme')
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-      setIsDarkMode(true)
-      document.documentElement.classList.add('dark')
-    }
-    
-    setIsLoading(false)
-    
-    // Track app launch
-    analyticsAPI.trackAppUsage('app_launched')
-  }, [])
-
-  const handleAddConfession = async (newConfession) => {
-    try {
-      hapticFeedback.success()
-      await addConfession(newConfession)
-      setCurrentScreen('home')
-      
-      // Trigger confetti animation
-      setTimeout(() => {
-        createConfetti(0.5, 0.3)
-      }, 100)
-      
-      // Track success
-      analyticsAPI.trackAppUsage('confession_added')
-    } catch (error) {
-      console.error('Error adding confession:', error)
-      hapticFeedback.error()
-      throw error
-    }
+  const handleTabChange = (tab) => {
+    hapticFeedback.button()
+    setActiveTab(tab)
   }
 
-  const handleDeleteConfession = async (id) => {
-    try {
-      hapticFeedback.delete()
-      await deleteConfession(id)
-      analyticsAPI.trackAppUsage('confession_deleted')
-    } catch (error) {
-      console.error('Error deleting confession:', error)
-      hapticFeedback.error()
-      throw error
-    }
-  }
-
-  const handleUpdateReactions = async (confessionId, reactionType) => {
-    try {
-      hapticFeedback.reaction()
-      await updateReactions(confessionId, reactionType)
-    } catch (error) {
-      console.error('Error updating reactions:', error)
-      hapticFeedback.error()
-    }
-  }
-
-  const handleRefresh = async () => {
-    try {
-      hapticFeedback.pull()
-      await refresh()
-      hapticFeedback.success()
-      analyticsAPI.trackAppUsage('confessions_refreshed')
-    } catch (error) {
-      console.error('Error refreshing confessions:', error)
-      hapticFeedback.error()
-    }
-  }
-
-  const handleScreenChange = (screen) => {
-    hapticFeedback.navigate()
-    setCurrentScreen(screen)
-    analyticsAPI.trackAppUsage(`screen_changed_to_${screen}`)
-  }
-
-  const handleThemeToggle = () => {
-    hapticFeedback.toggle()
-    const newTheme = !isDarkMode
-    setIsDarkMode(newTheme)
-    
-    if (newTheme) {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('snitchr-theme', 'dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('snitchr-theme', 'light')
-    }
-    
-    analyticsAPI.trackAppUsage(`theme_changed_to_${newTheme ? 'dark' : 'light'}`)
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading Snitchr...</p>
-        </div>
-      </div>
-    )
+  const handleAddClick = () => {
+    hapticFeedback.button()
+    setShowAddConfession(true)
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 safe-area-top">
-        <div className="max-w-md mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Snitchr</h1>
-              <span className="text-xs bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400 px-2 py-1 rounded-full animate-pulse-slow">
-                Beta
-              </span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleThemeToggle}
-                className="relative inline-flex h-10 w-20 items-center rounded-full bg-gray-200 dark:bg-gray-700 transition-colors touch-target"
-                aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
-              >
-                <span className="sr-only">Toggle dark mode</span>
-                
-                {/* Toggle Track */}
-                <span
-                  className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${
-                    isDarkMode ? 'translate-x-11' : 'translate-x-1'
-                  }`}
-                >
-                  {/* Sun Icon */}
-                  <svg
-                    className={`absolute inset-0 h-6 w-6 p-1 text-yellow-500 transition-opacity duration-200 ${
-                      isDarkMode ? 'opacity-0' : 'opacity-100'
-                    }`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 10 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  
-                  {/* Moon Icon */}
-                  <svg
-                    className={`absolute inset-0 h-6 w-6 p-1 text-blue-500 transition-opacity duration-200 ${
-                      isDarkMode ? 'opacity-100' : 'opacity-0'
-                    }`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                  </svg>
-                </span>
-              </button>
-              <button
-                onClick={() => handleScreenChange(currentScreen === 'home' ? 'add' : 'home')}
-                className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors btn-press touch-target focus-ring"
-              >
-                {currentScreen === 'home' ? 'Add' : 'Back'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Error Banner */}
-      {confessionsError && (
-        <div className="bg-red-50 dark:bg-red-900 border-b border-red-200 dark:border-red-800 px-4 py-3">
-          <div className="max-w-md mx-auto flex items-center space-x-3">
-            <svg className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-            <p className="text-sm text-red-700 dark:text-red-300">
-              {confessionsError}
-            </p>
-            <button
-              onClick={refresh}
-              className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 font-medium"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      )}
-
+    <div className="min-h-screen bg-[#000000]">
       {/* Main Content */}
-      <main className="max-w-md mx-auto px-4 py-6 pb-24 safe-area-bottom">
-        <PullToRefresh onRefresh={handleRefresh}>
-          <div className="screen-transition">
-            {currentScreen === 'home' ? (
-              confessionsLoading && confessions.length === 0 ? (
-                <SkeletonLoader type="confession" count={3} />
-              ) : (
-                <Home 
-                  confessions={confessions} 
-                  onDelete={handleDeleteConfession}
-                  onAddNew={() => handleScreenChange('add')}
-                  onReaction={handleUpdateReactions}
-                  onLoadMore={loadMore}
-                  hasMore={hasMore}
-                  loading={confessionsLoading}
-                />
-              )
-            ) : (
-              <AddConfession
-                onAdd={handleAddConfession}
-                onCancel={() => handleScreenChange('home')}
-              />
-            )}
-          </div>
-        </PullToRefresh>
+      <main className="pb-16">
+        {activeTab === 'home' && <Home />}
+        {activeTab === 'trending' && <Trending />}
+        {activeTab === 'notifications' && <Notifications />}
+        {activeTab === 'profile' && <Profile />}
       </main>
 
-      {/* Floating Action Button */}
-      {currentScreen === 'home' && (
-        <button
-          onClick={() => handleScreenChange('add')}
-          className="fab btn-press focus-ring"
-          aria-label="Add new confession"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
-      )}
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-[#2f3336] px-4 py-2">
+        <div className="flex items-center justify-around">
+          {/* Home */}
+          <button
+            onClick={() => handleTabChange('home')}
+            className={`p-3 rounded-full ${
+              activeTab === 'home' ? 'text-white' : 'text-[#71767b]'
+            }`}
+          >
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              {activeTab === 'home' ? (
+                <path d="M12 1.696L.622 8.807l1.06 1.696L3 9.679V19.5C3 20.881 4.119 22 5.5 22h13c1.381 0 2.5-1.119 2.5-2.5V9.679l1.318.824 1.06-1.696L12 1.696zM12 16.5c-1.933 0-3.5-1.567-3.5-3.5s1.567-3.5 3.5-3.5 3.5 1.567 3.5 3.5-1.567 3.5-3.5 3.5z" />
+              ) : (
+                <path d="M12 9c-1.933 0-3.5 1.567-3.5 3.5S10.067 16 12 16s3.5-1.567 3.5-3.5S13.933 9 12 9zm0 5c-.827 0-1.5-.673-1.5-1.5S11.173 11 12 11s1.5.673 1.5 1.5S12.827 14 12 14zm9.5-4.321V19.5c0 .827-.673 1.5-1.5 1.5h-13c-.827 0-1.5-.673-1.5-1.5V9.679l8-5.333 8 5.333zM12 1.696L.622 8.807l1.06 1.696L3 9.679V19.5C3 20.881 4.119 22 5.5 22h13c1.381 0 2.5-1.119 2.5-2.5V9.679l1.318.824 1.06-1.696L12 1.696z" />
+              )}
+            </svg>
+          </button>
 
-      {/* Screen Transition Overlay */}
-      {currentScreen === 'add' && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 animate-fade-in-up modal-overlay" />
+          {/* Trending */}
+          <button
+            onClick={() => handleTabChange('trending')}
+            className={`p-3 rounded-full ${
+              activeTab === 'trending' ? 'text-white' : 'text-[#71767b]'
+            }`}
+          >
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              {activeTab === 'trending' ? (
+                <path d="M8.5 2c1.5 2 2 3.5 2 5.5 0 2-1.5 4-3.5 4.5.5-1.5.5-3-.5-4.5-1.5-2-3-3-5-3 .5 4.5 2.5 7 5.5 8.5C4.5 15 2 18.5 2 22h2c.5-4.5 3.5-8 8-8.5 4 0 7.5-3 7.5-7C19.5 3 16.5 0 12.5 0S8.5 2 8.5 2zM12 9.5c-1.5 0-2.5-1-2.5-2.5S10.5 4.5 12 4.5s2.5 1 2.5 2.5S13.5 9.5 12 9.5z" />
+              ) : (
+                <path d="M8.5 2c1.5 2 2 3.5 2 5.5 0 2-1.5 4-3.5 4.5.5-1.5.5-3-.5-4.5-1.5-2-3-3-5-3 .5 4.5 2.5 7 5.5 8.5C4.5 15 2 18.5 2 22h2c.5-4.5 3.5-8 8-8.5 4 0 7.5-3 7.5-7C19.5 3 16.5 0 12.5 0S8.5 2 8.5 2zm3.5 7.5c-1.5 0-2.5-1-2.5-2.5S10.5 4.5 12 4.5s2.5 1 2.5 2.5S13.5 9.5 12 9.5z" />
+              )}
+            </svg>
+          </button>
+
+          {/* Add Button */}
+          <button
+            onClick={handleAddClick}
+            className="p-3 bg-[#1d9bf0] rounded-full text-white shadow-lg transform active:scale-95 transition-transform"
+          >
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M11 11V4h2v7h7v2h-7v7h-2v-7H4v-2h7z" />
+            </svg>
+          </button>
+
+          {/* Notifications */}
+          <button
+            onClick={() => handleTabChange('notifications')}
+            className={`p-3 rounded-full ${
+              activeTab === 'notifications' ? 'text-white' : 'text-[#71767b]'
+            }`}
+          >
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              {activeTab === 'notifications' ? (
+                <path d="M11.996 2c-4.062 0-7.49 3.021-7.999 7.051L2.866 18H7.1c.463 2.282 2.481 4 4.9 4s4.437-1.718 4.9-4h4.236l-1.143-8.958C19.48 5.017 16.054 2 11.996 2zM9.171 18h5.658c-.412 1.165-1.523 2-2.829 2s-2.417-.835-2.829-2z" />
+              ) : (
+                <path d="M19.993 9.042C19.48 5.017 16.054 2 11.996 2s-7.49 3.021-7.999 7.051L2.866 18H7.1c.463 2.282 2.481 4 4.9 4s4.437-1.718 4.9-4h4.236l-1.143-8.958zM12 20c-1.306 0-2.417-.835-2.829-2h5.658c-.412 1.165-1.523 2-2.829 2zm-6.866-4l.847-6.698C6.364 6.272 8.941 4 11.996 4s5.627 2.268 6.013 5.295L18.864 16H5.134z" />
+              )}
+            </svg>
+          </button>
+
+          {/* Profile */}
+          <button
+            onClick={() => handleTabChange('profile')}
+            className={`p-3 rounded-full ${
+              activeTab === 'profile' ? 'text-white' : 'text-[#71767b]'
+            }`}
+          >
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              {activeTab === 'profile' ? (
+                <path d="M17.863 13.44c1.477 1.58 2.366 3.8 2.632 6.46l.11 1.1H3.395l.11-1.1c.266-2.66 1.155-4.88 2.632-6.46C7.627 11.85 9.648 11 12 11s4.373.85 5.863 2.44zM12 2C9.791 2 8 3.79 8 6s1.791 4 4 4 4-1.79 4-4-1.791-4-4-4z" />
+              ) : (
+                <path d="M5.651 19h12.698c-.337-1.8-1.023-3.21-1.945-4.19C15.318 13.65 13.838 13 12 13s-3.317.65-4.404 1.81c-.922.98-1.608 2.39-1.945 4.19zm.486-5.56C7.627 11.85 9.648 11 12 11s4.373.85 5.863 2.44c1.477 1.58 2.366 3.8 2.632 6.46l.11 1.1H3.395l.11-1.1c.266-2.66 1.155-4.88 2.632-6.46zM12 4c-1.105 0-2 .9-2 2s.895 2 2 2 2-.9 2-2-.895-2-2-2zM8 6c0-2.21 1.791-4 4-4s4 1.79 4 4-1.791 4-4 4-4-1.79-4-4z" />
+              )}
+            </svg>
+          </button>
+        </div>
+      </nav>
+
+      {/* Add Confession Modal */}
+      {showAddConfession && (
+        <AddConfession onClose={() => setShowAddConfession(false)} />
       )}
     </div>
   )

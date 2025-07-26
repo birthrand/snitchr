@@ -9,6 +9,21 @@ const SwipeActions = ({ children, onDelete, onShare, onFavorite }) => {
   const currentX = useRef(0)
   const threshold = 80
 
+  // Reset position when action is triggered
+  useEffect(() => {
+    if (actionTriggered) {
+      setDragDistance(0)
+      setIsDragging(false)
+      
+      // Reset action after animation
+      const timer = setTimeout(() => {
+        setActionTriggered(null)
+      }, 300)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [actionTriggered])
+
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -16,7 +31,6 @@ const SwipeActions = ({ children, onDelete, onShare, onFavorite }) => {
     const handleTouchStart = (e) => {
       startX.current = e.touches[0].clientX
       setIsDragging(true)
-      setActionTriggered(null)
     }
 
     const handleTouchMove = (e) => {
@@ -47,13 +61,11 @@ const SwipeActions = ({ children, onDelete, onShare, onFavorite }) => {
           setActionTriggered('favorite')
           onFavorite?.()
         }
+      } else {
+        // Reset if threshold not met
+        setDragDistance(0)
+        setIsDragging(false)
       }
-
-      setIsDragging(false)
-      setDragDistance(0)
-      
-      // Reset action after animation
-      setTimeout(() => setActionTriggered(null), 300)
     }
 
     container.addEventListener('touchstart', handleTouchStart, { passive: false })
@@ -119,11 +131,11 @@ const SwipeActions = ({ children, onDelete, onShare, onFavorite }) => {
       {/* Content */}
       <div 
         ref={containerRef}
-        className={`relative transition-all duration-200 ${
+        className={`relative transition-transform duration-300 ease-out ${
           isDragging ? 'select-none' : ''
         }`}
         style={{
-          transform: `translateX(-${dragDistance * 0.3}px)`,
+          transform: `translateX(-${dragDistance}px)`,
           transition: isDragging ? 'none' : 'transform 0.3s ease-out'
         }}
       >
@@ -132,7 +144,7 @@ const SwipeActions = ({ children, onDelete, onShare, onFavorite }) => {
 
       {/* Action feedback */}
       {actionTriggered && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 z-10">
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 z-10 animate-fade-in-up">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg">
             <div className="flex items-center space-x-3">
               {actionTriggered === 'favorite' && (

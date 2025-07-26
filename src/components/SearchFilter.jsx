@@ -1,131 +1,91 @@
 import { useState } from 'react'
+import { hapticFeedback } from '../utils/haptics'
 
-const SearchFilter = ({ onSearch, onFilter, totalCount }) => {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState('all')
-  const [isExpanded, setIsExpanded] = useState(false)
+const SearchFilter = ({ searchTerm, setSearchTerm, filterType, setFilterType }) => {
+  const [showFilters, setShowFilters] = useState(false)
 
-  const handleSearch = (e) => {
-    const value = e.target.value
-    setSearchTerm(value)
-    onSearch(value)
-  }
-
-  const handleFilter = (type) => {
+  const handleFilterClick = (type) => {
+    hapticFeedback.button()
     setFilterType(type)
-    onFilter(type)
+    setShowFilters(false)
   }
 
-  const filterOptions = [
-    { value: 'all', label: 'All', icon: '📝' },
-    { value: 'recent', label: 'Recent', icon: '🕐' },
-    { value: 'popular', label: 'Popular', icon: '🔥' },
-    { value: 'with-reactions', label: 'With Reactions', icon: '❤️' },
-    { value: 'no-reactions', label: 'No Reactions', icon: '🤷' }
-  ]
+  const hasActiveFilters = filterType !== 'all'
 
   return (
-    <div className="mb-6 space-y-4">
-      {/* Search Bar */}
+    <div className="relative">
+      {/* Search Bar - Simplified */}
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
         <input
-          type="text"
+          type="search"
           value={searchTerm}
-          onChange={handleSearch}
-          className="block w-full pl-10 pr-3 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
-          placeholder="Search confessions..."
-          aria-label="Search confessions"
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search"
+          className="w-full bg-[#202327] text-[15px] text-white placeholder-[#71767b] rounded-full py-2.5 pl-12 pr-4 focus:outline-none focus:ring-1 focus:ring-[#1d9bf0] border-none"
         />
+        <svg
+          className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#71767b]"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+          />
+        </svg>
         {searchTerm && (
           <button
-            onClick={() => {
-              setSearchTerm('')
-              onSearch('')
-            }}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            aria-label="Clear search"
+            onClick={() => setSearchTerm('')}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1d9bf0] hover:text-[#1a8cd8] transition-colors"
           >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" />
             </svg>
           </button>
         )}
       </div>
 
-      {/* Filter Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            {totalCount} confession{totalCount !== 1 ? 's' : ''}
-          </span>
-          {(searchTerm || filterType !== 'all') && (
-            <span className="text-xs bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400 px-2 py-1 rounded-full">
-              Filtered
-            </span>
-          )}
-        </div>
-        
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-          aria-label="Toggle filters"
-        >
-          <span>Filters</span>
-          <svg 
-            className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
+      {/* Filter Button - Only shown when needed */}
+      {(searchTerm || hasActiveFilters) && (
+        <div className="absolute right-0 top-0 -mr-12">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="p-2.5 text-[#1d9bf0] hover:bg-[#1d9bf01a] rounded-full transition-colors relative"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-      </div>
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1-8h-2V7h2v2z" />
+            </svg>
+            {hasActiveFilters && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#1d9bf0] rounded-full" />
+            )}
+          </button>
+        </div>
+      )}
 
-      {/* Filter Options */}
-      {isExpanded && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 animate-fade-in-up">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-            Filter by
-          </h3>
-          <div className="grid grid-cols-2 gap-2">
-            {filterOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => handleFilter(option.value)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 touch-target ${
-                  filterType === option.value
-                    ? 'bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-                aria-label={`Filter by ${option.label}`}
-              >
-                <span className="text-base">{option.icon}</span>
-                <span>{option.label}</span>
-              </button>
-            ))}
-          </div>
-          
-          {/* Clear Filters */}
-          {(searchTerm || filterType !== 'all') && (
+      {/* Filter Dropdown - Simplified */}
+      {showFilters && (
+        <div className="absolute right-0 mt-2 w-48 bg-black rounded-xl shadow-lg border border-[#2f3336] overflow-hidden z-20 animate-dropdown">
+          <div className="py-1">
             <button
-              onClick={() => {
-                setSearchTerm('')
-                setFilterType('all')
-                onSearch('')
-                onFilter('all')
-              }}
-              className="w-full mt-3 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-              aria-label="Clear all filters"
+              onClick={() => handleFilterClick('all')}
+              className={`w-full px-4 py-3 text-left text-[15px] hover:bg-[#16181c] transition-colors ${
+                filterType === 'all' ? 'text-[#1d9bf0]' : 'text-white'
+              }`}
             >
-              Clear all filters
+              All posts
             </button>
-          )}
+            <button
+              onClick={() => handleFilterClick('favorites')}
+              className={`w-full px-4 py-3 text-left text-[15px] hover:bg-[#16181c] transition-colors ${
+                filterType === 'favorites' ? 'text-[#1d9bf0]' : 'text-white'
+              }`}
+            >
+              Liked posts
+            </button>
+          </div>
         </div>
       )}
     </div>

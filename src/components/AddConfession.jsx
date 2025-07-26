@@ -13,6 +13,7 @@ const AddConfession = ({ onAdd, onCancel }) => {
   const [errors, setErrors] = useState({})
 
   // Get geolocation on component mount
+  /*
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -47,6 +48,7 @@ const AddConfession = ({ onAdd, onCancel }) => {
       setLocationError('Geolocation not supported by this browser')
     }
   }, [])
+  */
 
   const validateForm = () => {
     const newErrors = {}
@@ -78,10 +80,8 @@ const AddConfession = ({ onAdd, onCancel }) => {
 
     try {
       const newConfession = {
-        id: Date.now().toString(),
         nickname: nickname.trim() || null,
         message: message.trim(),
-        timestamp: new Date().toISOString(),
         location: location,
         mood: selectedMood,
         reactions: {
@@ -105,165 +105,102 @@ const AddConfession = ({ onAdd, onCancel }) => {
   const canSubmit = message.trim().length > 0 && !isOverLimit && !isSubmitting
 
   return (
-    <div className="space-y-6 animate-slide-in-right">
-      {/* Header */}
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Share Your Confession</h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          Share something anonymously. Your identity will remain private.
-        </p>
+    <div className="space-y-4 animate-slide-in-right">
+      {/* Header with X button */}
+      <div className="flex items-center justify-between">
+        <div className="text-center flex-1">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Share Your Confession</h2>
+        </div>
+        <button
+          onClick={onCancel}
+          className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors touch-target"
+          aria-label="Cancel"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* Message Input */}
         <div>
-          <label htmlFor="message" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            Your Confession *
-          </label>
-          <div className="relative">
-            <textarea
-              id="message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows={6}
-              className={`w-full px-4 py-4 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 ${
-                errors.message ? 'border-red-300 dark:border-red-600' : 'border-gray-200 dark:border-gray-700'
-              }`}
-              placeholder="Share your anonymous confession here..."
-              maxLength={280}
-              disabled={isSubmitting}
-            />
-            <div className="absolute bottom-3 right-3">
-              <span className={`text-sm font-medium ${
-                isOverLimit ? 'text-red-500' : characterCount > 250 ? 'text-yellow-500' : 'text-gray-400'
-              }`}>
-                {characterCount}/280
-              </span>
-            </div>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={5}
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-base mobile-input ${
+              errors.message ? 'border-red-300 dark:border-red-600' : 'border-gray-200 dark:border-gray-700'
+            }`}
+            placeholder="Share your anonymous confession here..."
+            maxLength={280}
+            disabled={isSubmitting}
+          />
+          <div className="flex items-center justify-between mt-2">
+            {errors.message && (
+              <p className="text-sm text-red-600 dark:text-red-400">{errors.message}</p>
+            )}
+            <span className={`text-xs font-medium ml-auto ${
+              isOverLimit ? 'text-red-500' : characterCount > 250 ? 'text-yellow-500' : 'text-gray-400'
+            }`}>
+              {characterCount}/280
+            </span>
           </div>
-          {errors.message && (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.message}</p>
-          )}
         </div>
 
-        {/* Mood Picker */}
+        {/* Mood Picker - Compact */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            How are you feeling? (Optional)
-          </label>
           <EmojiPicker 
             selectedEmoji={selectedMood?.value} 
             onEmojiSelect={setSelectedMood} 
           />
         </div>
 
-        {/* Nickname Input */}
+        {/* Nickname Input - Compact */}
         <div>
-          <label htmlFor="nickname" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            Nickname (Optional)
-          </label>
           <input
             type="text"
-            id="nickname"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
-            className={`w-full px-4 py-4 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 ${
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-base mobile-input ${
               errors.nickname ? 'border-red-300 dark:border-red-600' : 'border-gray-200 dark:border-gray-700'
             }`}
-            placeholder="Choose a nickname (2-20 characters) or leave blank for anonymous"
+            placeholder="Nickname (optional)"
             maxLength={20}
             disabled={isSubmitting}
           />
           {errors.nickname && (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.nickname}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.nickname}</p>
           )}
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Leave blank to remain completely anonymous
-          </p>
-        </div>
-
-        {/* Location Status */}
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-3">
-            <div className={`w-3 h-3 rounded-full ${
-              location ? 'bg-success-500' : locationError ? 'bg-error-500' : 'bg-warning-500 animate-pulse-slow'
-            }`}></div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {location 
-                  ? locationName 
-                    ? `📍 ${locationName.name}`
-                    : 'Location detected'
-                  : locationError 
-                    ? 'Location unavailable' 
-                    : 'Detecting location...'
-                }
-              </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                {location 
-                  ? locationName
-                    ? `Your confession will be tagged with your location in ${locationName.name}`
-                    : 'Your confession will be tagged with your approximate location'
-                  : locationError || 'This helps others know where confessions are shared from'
-                }
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Submit Error */}
         {errors.submit && (
-          <div className="bg-error-50 dark:bg-error-900 border border-error-200 dark:border-error-800 rounded-xl p-4">
-            <div className="flex items-center space-x-3">
-              <svg className="w-5 h-5 text-error-500 dark:text-error-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-800 rounded-lg p-3">
+            <div className="flex items-center space-x-2">
+              <svg className="w-4 h-4 text-red-500 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
-              <p className="text-sm text-error-600 dark:text-error-400">{errors.submit}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">{errors.submit}</p>
             </div>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex space-x-3 pt-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex-1 px-6 py-4 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 font-medium btn-press touch-target"
-            disabled={isSubmitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="flex-1 px-6 py-4 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-all duration-200 btn-press touch-target shadow-lg hover:shadow-xl disabled:shadow-none"
-          >
-            {isSubmitting ? (
-              <div className="flex items-center justify-center space-x-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Posting...</span>
-              </div>
-            ) : (
-              'Post Confession'
-            )}
-          </button>
-        </div>
-
-        {/* Privacy Notice */}
-        <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-          <div className="flex items-start space-x-3">
-            <svg className="w-5 h-5 text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">Privacy & Anonymity</h4>
-              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                Your confessions are stored locally on your device. We don't collect or store any personal information. 
-                Your nickname and location data remain private and are only visible to you.
-              </p>
+        {/* Submit Button - Full Width */}
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="w-full px-6 py-3 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all duration-200 btn-press touch-target shadow-lg hover:shadow-xl disabled:shadow-none"
+        >
+          {isSubmitting ? (
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Posting...</span>
             </div>
-          </div>
-        </div>
+          ) : (
+            'Post Confession'
+          )}
+        </button>
       </form>
     </div>
   )
