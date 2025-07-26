@@ -1,8 +1,98 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ReactionButton from './ReactionButton'
+import SearchFilter from './SearchFilter'
+import Settings from './Settings'
+import { getCachedLocation, getLocationDisplay } from '../utils/geocoding'
 
 const Home = ({ confessions, onDelete, onAddNew, onReaction }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [filteredConfessions, setFilteredConfessions] = useState(confessions)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterType, setFilterType] = useState('all')
+  const [locationCache, setLocationCache] = useState({})
+
+  // Update filtered confessions when confessions or filters change
+  useEffect(() => {
+    let filtered = [...confessions]
+
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      filtered = filtered.filter(confession => 
+        confession.message.toLowerCase().includes(term) ||
+        (confession.nickname && confession.nickname.toLowerCase().includes(term))
+      )
+    }
+
+    // Apply type filter
+    switch (filterType) {
+      case 'recent':
+        filtered = filtered.slice(0, 10) // Show only 10 most recent
+        break
+      case 'popular':
+        filtered = filtered.filter(confession => {
+          const reactions = confession.reactions || {}
+          const totalReactions = (reactions.heart || 0) + (reactions.laugh || 0) + (reactions.think || 0)
+          return totalReactions > 0
+        }).sort((a, b) => {
+          const reactionsA = a.reactions || {}
+          const reactionsB = b.reactions || {}
+          const totalA = (reactionsA.heart || 0) + (reactionsA.laugh || 0) + (reactionsA.think || 0)
+          const totalB = (reactionsB.heart || 0) + (reactionsB.laugh || 0) + (reactionsB.think || 0)
+          return totalB - totalA
+        })
+        break
+      case 'with-reactions':
+        filtered = filtered.filter(confession => {
+          const reactions = confession.reactions || {}
+          return (reactions.heart || 0) + (reactions.laugh || 0) + (reactions.think || 0) > 0
+        })
+        break
+      case 'no-reactions':
+        filtered = filtered.filter(confession => {
+          const reactions = confession.reactions || {}
+          return (reactions.heart || 0) + (reactions.laugh || 0) + (reactions.think || 0) === 0
+        })
+        break
+      default:
+        // 'all' - no additional filtering
+        break
+    }
+
+    setFilteredConfessions(filtered)
+  }, [confessions, searchTerm, filterType])
+
+  // Load location data for confessions
+  useEffect(() => {
+    const loadLocations = async () => {
+      const newCache = { ...locationCache }
+      let hasUpdates = false
+
+      for (const confession of confessions) {
+        if (confession.location && !locationCache[confession.id]) {
+          try {
+            const location = await getCachedLocation(
+              confession.location.latitude,
+              confession.location.longitude
+            )
+            if (location) {
+              newCache[confession.id] = location
+              hasUpdates = true
+            }
+          } catch (error) {
+            console.error('Error loading location for confession:', confession.id, error)
+          }
+        }
+      }
+
+      if (hasUpdates) {
+        setLocationCache(newCache)
+      }
+    }
+
+    loadLocations()
+  }, [confessions])
 
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp)
@@ -28,14 +118,6 @@ const Home = ({ confessions, onDelete, onAddNew, onReaction }) => {
     onReaction(confessionId, reactionType)
   }
 
-  const getLocationDisplay = (location) => {
-    if (!location) return null
-    
-    // This would typically use a reverse geocoding service
-    // For now, we'll show a generic location indicator
-    return '📍 Nearby'
-  }
-
   const generateNickname = () => {
     const adjectives = ['Moon', 'Star', 'Ocean', 'Forest', 'Sky', 'River', 'Mountain', 'Desert', 'Rainbow', 'Thunder']
     const nouns = ['Wolf', 'Eagle', 'Phoenix', 'Dragon', 'Tiger', 'Lion', 'Bear', 'Fox', 'Owl', 'Butterfly']
@@ -46,9 +128,48 @@ const Home = ({ confessions, onDelete, onAddNew, onReaction }) => {
     return `${randomAdjective}${randomNoun}`
   }
 
+  const handleSearch = (term) => {
+    setSearchTerm(term)
+  }
+
+  const handleFilter = (type) => {
+    setFilterType(type)
+  }
+
   return (
     <div className="space-y-4">
+      {/* Search and Filter */}
+      <SearchFilter 
+        onSearch={handleSearch}
+        onFilter={handleFilter}
+        totalCount={filteredConfessions.length}
+      />
+
       {/* Empty State */}
+      {filteredConfessions.length === 0 && confessions.length > 0 && (
+        <div className="text-center py-12 animate-fade-in-up">
+          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full flex items-center justify-center">
+            <svg className="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No confessions found</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Try adjusting your search or filter criteria.
+          </p>
+          <button
+            onClick={() => {
+              setSearchTerm('')
+              setFilterType('all')
+            }}
+            className="bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 btn-press"
+          >
+            Clear Filters
+          </button>
+        </div>
+      )}
+
+      {/* No Confessions State */}
       {confessions.length === 0 && (
         <div className="text-center py-12 animate-fade-in-up">
           <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900 dark:to-primary-800 rounded-full flex items-center justify-center">
@@ -70,27 +191,39 @@ const Home = ({ confessions, onDelete, onAddNew, onReaction }) => {
       )}
 
       {/* Confessions List */}
-      {confessions.length > 0 && (
+      {filteredConfessions.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Recent Confessions
+                {filterType === 'all' ? 'Recent Confessions' : `${filterType.charAt(0).toUpperCase() + filterType.slice(1)} Confessions`}
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {confessions.length} confession{confessions.length !== 1 ? 's' : ''} shared
+                {filteredConfessions.length} confession{filteredConfessions.length !== 1 ? 's' : ''} shown
               </p>
             </div>
-            <button
-              onClick={onAddNew}
-              className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors btn-press touch-target shadow-md"
-            >
-              Add New
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowSettings(true)}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors touch-target"
+                aria-label="Settings"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+              <button
+                onClick={onAddNew}
+                className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors btn-press touch-target shadow-md"
+              >
+                Add New
+              </button>
+            </div>
           </div>
           
           <div className="space-y-4">
-            {confessions.map((confession, index) => (
+            {filteredConfessions.map((confession, index) => (
               <div
                 key={confession.id}
                 className="bg-white dark:bg-gray-800 rounded-xl shadow-soft border border-gray-100 dark:border-gray-700 p-5 card-hover animate-fade-in-up"
@@ -113,7 +246,12 @@ const Home = ({ confessions, onDelete, onAddNew, onReaction }) => {
                         {confession.location && (
                           <>
                             <span>•</span>
-                            <span>{getLocationDisplay(confession.location)}</span>
+                            <span>
+                              {locationCache[confession.id] 
+                                ? getLocationDisplay(locationCache[confession.id])
+                                : '📍 Loading location...'
+                              }
+                            </span>
                           </>
                         )}
                       </div>
@@ -204,6 +342,14 @@ const Home = ({ confessions, onDelete, onAddNew, onReaction }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <Settings 
+          confessions={confessions}
+          onClose={() => setShowSettings(false)}
+        />
       )}
     </div>
   )
