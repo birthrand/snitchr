@@ -119,14 +119,22 @@ FOR INSERT WITH CHECK (true);
 
 ## 🔧 Supabase Configuration
 
-### Project Details
-- **Project URL**: `https://jbaijbhtkharypebhcff.supabase.co`
-- **Project ID**: `jbaijbhtkharypebhcff`
-- **Region**: US East 1
-- **Database**: PostgreSQL 17.4.1
+### Project Setup
+1. Create a new Supabase project
+2. Note down your project URL and anon key
+3. Create a `.env.local` file in your project root:
+   ```env
+   VITE_SUPABASE_URL=your_project_url
+   VITE_SUPABASE_ANON_KEY=your_anon_key
+   ```
+4. Add `.env.local` to your `.gitignore` file
+5. For production, set these environment variables in your hosting platform
 
 ### API Keys
-- **Anon Key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiYWlqYmh0a2hhcnlwZWJoY2ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0MDUyMDMsImV4cCI6MjA2ODk4MTIwM30.7tnxxji0NFMpHRMRHKduvu1wRvlTwdrU6vysh1Lt84g`
+- **NEVER** commit API keys to version control
+- **NEVER** expose service role key in frontend code
+- Use environment variables for all sensitive credentials
+- Rotate keys regularly for security
 
 ## 📱 Frontend Integration
 
@@ -136,8 +144,12 @@ The app uses a custom Supabase client configuration in `src/supabase.js`:
 ```javascript
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://jbaijbhtkharypebhcff.supabase.co'
-const supabaseAnonKey = 'your-anon-key'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables')
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -278,6 +290,12 @@ npm install
 # Install Supabase client
 npm install @supabase/supabase-js
 
+# Create environment file
+cp .env.example .env.local
+
+# Add your Supabase credentials to .env.local
+# NEVER commit this file to version control!
+
 # Start development server
 npm run dev
 ```
@@ -285,8 +303,8 @@ npm run dev
 ### Environment Variables
 Create `.env.local` file:
 ```env
-VITE_SUPABASE_URL=https://jbaijbhtkharypebhcff.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_SUPABASE_URL=your_project_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
 ```
 
 ## 📈 Monitoring & Maintenance
